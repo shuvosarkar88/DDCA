@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Course Schedule: DDCA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Chosen Palette: Warm Neutrals with Teal Accent -->
+    <!-- Application Structure Plan: The application is designed as an interactive timeline/dashboard. The core is a chronological list of lecture "cards," allowing users to track their progress. This structure was chosen over a static table to turn passive information consumption into an active, engaging learning tool. Key interactions include a status tracker on each card (Not Started, In Progress, Completed) which updates a global progress bar, and a filtering system to view lectures by status or type. This user-centric design improves usability and helps students manage their learning flow effectively. -->
+    <!-- Visualization & Content Choices: Report Info: Course lecture list. Goal: Inform, Organize, Track Progress. Viz/Presentation: Interactive HTML cards with status dropdowns. Interaction: User can change the status of each lecture, which visually updates the card (color change) and a main progress bar at the top. A filtering mechanism allows users to sort the view. Justification: This approach is highly interactive and provides immediate feedback on progress, which is more motivating than a static list. The progress bar gives a clear, at-a-glance overview of completion. Library/Method: Vanilla JS for all logic (rendering, state changes, filtering) and Tailwind CSS for styling. An HTML/CSS-based progress bar is used for its simplicity and performance. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .status-not-started {
+        background-color: #ffffff;
+      }
+      .status-in-progress {
+        background-color: #fef9c3;
+      } /* yellow-100 */
+      .status-completed {
+        background-color: #d1fae5;
+      } /* green-100 */
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+      <header class="text-center mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">
+          🏛️ Digital Design & Computer Architecture
+        </h1>
+        <p class="mt-2 text-slate-600">
+          Your interactive study hub to track lecture progress.
+        </p>
+      </header>
+
+      <main>
+        <div class="bg-white p-4 rounded-xl shadow-md mb-8 sticky top-4 z-10">
+          <h2 class="text-lg font-semibold mb-3 text-slate-700">
+            Course Progress
+          </h2>
+          <div class="w-full bg-slate-200 rounded-full h-6">
+            <div
+              id="progress-bar"
+              class="bg-teal-500 h-6 text-xs font-medium text-white text-center p-1 leading-none rounded-full transition-all duration-500"
+              style="width: 0%"
+            >
+              <span id="progress-text">0%</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-4 mt-4">
+            <div class="flex-1 min-w-[150px]">
+              <label
+                for="filter-status"
+                class="block text-sm font-medium text-slate-700"
+                >Filter by Status</label
+              >
+              <select
+                id="filter-status"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"
+              >
+                <option value="all">All</option>
+                <option value="not-started">Not Started</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div class="flex-1 min-w-[150px]">
+              <label
+                for="filter-type"
+                class="block text-sm font-medium text-slate-700"
+                >Filter by Type</label
+              >
+              <select
+                id="filter-type"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md"
+              >
+                <option value="all">All</option>
+                <option value="Lecture">Lecture</option>
+                <option value="Lab">Lab</option>
+                <option value="Holiday">Holiday</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3 mt-4 border-t border-slate-200 pt-4">
+            <button
+              id="export-data-btn"
+              class="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-md text-sm transition-colors"
+            >
+              Export Progress
+            </button>
+            <label
+              for="import-data-input"
+              class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-md text-sm transition-colors cursor-pointer text-center"
+            >
+              Import Progress
+            </label>
+            <input
+              type="file"
+              id="import-data-input"
+              class="hidden"
+              accept=".json"
+            />
+          </div>
+        </div>
+
+        <div id="schedule-container" class="space-y-6"></div>
+      </main>
+    </div>
+
+    <script>
+      let scheduleData = [];
+      const initialScheduleData = [
+        {
+          week: 1,
+          id: "L1",
+          topic: "Introduction and Basics",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 1,
+          id: "L2a",
+          topic: "Tradeoffs, Metrics, Mindset",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 1,
+          id: "L2b",
+          topic: "Combinational Logic I",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 1,
+          id: "Lab1",
+          topic: "Intro to Labs and FPGAs",
+          type: "Lab",
+          status: "not-started",
+        },
+        {
+          week: 2,
+          id: "L3",
+          topic: "Combinational Logic II",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 2,
+          id: "L4",
+          topic: "Sequential Logic Design I",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 3,
+          id: "L5a",
+          topic: "Sequential Logic Design II",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 3,
+          id: "L5b",
+          topic: "Hardware Description Languages & Verilog",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 3,
+          id: "L6a",
+          topic: "Hardware Description Languages & Verilog II",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 3,
+          id: "L6b",
+          topic: "Timing and Verification",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 4,
+          id: "L7",
+          topic: "Von Neumann Model & ISAs",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 4,
+          id: "L8",
+          topic: "Instruction Set Architectures I",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 5,
+          id: "L9a",
+          topic: "ISA & Microarchitecture",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 5,
+          id: "L9b",
+          topic: "Assembly Programming",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 5,
+          id: "L10",
+          topic: "Microarchitecture Fundamentals & Design",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 6,
+          id: "L11",
+          topic: "Multi-Cycle Microarchitecture Design",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 6,
+          id: "L12",
+          topic: "Pipelining",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 7,
+          id: "L13",
+          topic: "Pipelined Processor Design",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 8,
+          id: "L14",
+          topic: "Precise Exceptions",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 8,
+          id: "L15",
+          topic: "Out-of-Order Execution",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 9,
+          id: "L15b",
+          topic: "Load-Store Handling in OoO Execution",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 9,
+          id: "L16a",
+          topic: "Dataflow & Superscalar Execution",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 9,
+          id: "L16b",
+          topic: "Branch Prediction",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 9,
+          id: "L17",
+          topic: "Advanced Branch Prediction",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 10,
+          id: "L18a",
+          topic: "VLIW Architectures",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 10,
+          id: "L18b",
+          topic: "Systolic Array Architectures",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 10,
+          id: "L18c",
+          topic: "Decoupled Access-Execute",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 10,
+          id: "L19",
+          topic: "SIMD Architectures",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 11,
+          id: "L20",
+          topic: "GPU Architectures",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 11,
+          id: "L21",
+          topic: "Memory Organization & Technology",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 12,
+          id: "Holiday",
+          topic: "No Lecture (Ascension Day)",
+          type: "Holiday",
+          status: "completed",
+        },
+        {
+          week: 12,
+          id: "L22",
+          topic: "Memory Hierarchy and Caches",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 13,
+          id: "L23",
+          topic: "Cache Design and Management",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 13,
+          id: "L24a",
+          topic: "Advanced Caching",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 13,
+          id: "L24b",
+          topic: "Prefetching",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 14,
+          id: "L25a",
+          topic: "Advanced Prefetching",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 14,
+          id: "L25b",
+          topic: "Virtual Memory",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 14,
+          id: "L26a",
+          topic: "Virtual Memory II",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 14,
+          id: "L26b",
+          topic: "Epilogue & Future Computing",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 14,
+          id: "L26c",
+          topic: "Virtual Memory Issues and Examples",
+          type: "Lecture",
+          status: "not-started",
+        },
+        {
+          week: 15,
+          id: "L27",
+          topic: "Problem Solving",
+          type: "Lecture",
+          status: "not-started",
+        },
+      ];
+
+      const weekDateRanges = {
+        1: "August 1 - 7, 2025",
+        2: "August 8 - 14, 2025",
+        3: "August 15 - 21, 2025",
+        4: "August 22 - 28, 2025",
+        5: "August 29 - Sep 4, 2025",
+        6: "September 5 - 11, 2025",
+        7: "September 12 - 18, 2025",
+        8: "September 19 - 25, 2025",
+        9: "September 26 - Oct 2, 2025",
+        10: "October 3 - 9, 2025",
+        11: "October 10 - 16, 2025",
+        12: "October 17 - 23, 2025",
+        13: "October 24 - 30, 2025",
+        14: "October 31 - Nov 6, 2025",
+        15: "November 7 - 14, 2025",
+      };
+
+      const scheduleContainer = document.getElementById("schedule-container");
+      const progressBar = document.getElementById("progress-bar");
+      const progressText = document.getElementById("progress-text");
+      const filterStatus = document.getElementById("filter-status");
+      const filterType = document.getElementById("filter-type");
+      const exportBtn = document.getElementById("export-data-btn");
+      const importInput = document.getElementById("import-data-input");
+
+      const statusClasses = {
+        "not-started": "status-not-started",
+        "in-progress": "status-in-progress",
+        completed: "status-completed",
+      };
+
+      const saveData = () => {
+        localStorage.setItem("ddcaScheduleData", JSON.stringify(scheduleData));
+      };
+
+      const loadData = () => {
+        const savedData = localStorage.getItem("ddcaScheduleData");
+        if (savedData) {
+          scheduleData = JSON.parse(savedData);
+        } else {
+          scheduleData = initialScheduleData;
+        }
+      };
+
+      const renderSchedule = () => {
+        scheduleContainer.innerHTML = "";
+        let currentWeek = 0;
+        const statusFilterValue = filterStatus.value;
+        const typeFilterValue = filterType.value;
+
+        const filteredData = scheduleData.filter((item) => {
+          const statusMatch =
+            statusFilterValue === "all" || item.status === statusFilterValue;
+          const typeMatch =
+            typeFilterValue === "all" || item.type === typeFilterValue;
+          return statusMatch && typeMatch;
+        });
+
+        if (filteredData.length === 0) {
+          scheduleContainer.innerHTML = `<div class="text-center p-8 bg-white rounded-lg shadow-md"><p class="text-slate-500">No items match your filter criteria.</p></div>`;
+          return;
+        }
+
+        filteredData.forEach((item) => {
+          if (item.week !== currentWeek && item.week) {
+            currentWeek = item.week;
+            const weekHeader = document.createElement("div");
+            weekHeader.className =
+              "flex items-baseline justify-between pb-2 border-b-2 border-slate-200";
+            weekHeader.innerHTML = `
+                        <h2 class="text-2xl font-bold text-slate-700">Week ${currentWeek}</h2>
+                        <span class="text-sm font-normal text-slate-500">${
+                          weekDateRanges[currentWeek] || ""
+                        }</span>
+                    `;
+            scheduleContainer.appendChild(weekHeader);
+          }
+          const card = document.createElement("div");
+          card.id = `card-${item.id}`;
+          card.className = `p-4 rounded-lg shadow-md transition-all duration-300 ${
+            statusClasses[item.status]
+          }`;
+          const isHoliday = item.type === "Holiday";
+          card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-slate-800">${
+                              item.id
+                            }: ${item.topic}</h3>
+                            <div class="mt-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  item.type === "Lecture"
+                                    ? "bg-sky-100 text-sky-800"
+                                    : item.type === "Lab"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-slate-100 text-slate-800"
+                                }">
+                                    ${item.type}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 mt-4 sm:mt-0 sm:ml-6">
+                            ${
+                              !isHoliday
+                                ? `
+                            <div class="flex items-center space-x-4">
+                                <div class="hidden sm:flex space-x-2">
+                                    <a href="#" class="text-sm font-medium text-teal-600 hover:text-teal-800" onclick="event.preventDefault()">PDF</a>
+                                    <span class="text-slate-300">|</span>
+                                    <a href="#" class="text-sm font-medium text-teal-600 hover:text-teal-800" onclick="event.preventDefault()">PPT</a>
+                                </div>
+                                <div>
+                                    <select data-id="${
+                                      item.id
+                                    }" class="status-select rounded-md border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                                        <option value="not-started" ${
+                                          item.status === "not-started"
+                                            ? "selected"
+                                            : ""
+                                        }>Not Started</option>
+                                        <option value="in-progress" ${
+                                          item.status === "in-progress"
+                                            ? "selected"
+                                            : ""
+                                        }>In Progress</option>
+                                        <option value="completed" ${
+                                          item.status === "completed"
+                                            ? "selected"
+                                            : ""
+                                        }>Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            `
+                                : '<p class="text-sm text-slate-500 italic">Enjoy your day off!</p>'
+                            }
+                        </div>
+                    </div>
+                `;
+          scheduleContainer.appendChild(card);
+        });
+        addEventListeners();
+      };
+
+      const updateProgress = () => {
+        const trackableItems = scheduleData.filter(
+          (item) => item.type !== "Holiday"
+        );
+        const completedItems = trackableItems.filter(
+          (item) => item.status === "completed"
+        ).length;
+        const totalItems = trackableItems.length;
+        const percentage =
+          totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        progressBar.style.width = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
+      };
+
+      const handleStatusChange = (e) => {
+        const itemId = e.target.dataset.id;
+        const newStatus = e.target.value;
+        const item = scheduleData.find((d) => d.id === itemId);
+        if (item) item.status = newStatus;
+        const card = document.getElementById(`card-${itemId}`);
+        if (card)
+          card.className = `p-4 rounded-lg shadow-md transition-all duration-300 ${statusClasses[newStatus]}`;
+        updateProgress();
+        saveData();
+      };
+
+      const exportData = () => {
+        const dataStr = JSON.stringify(scheduleData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `ddca_progress_backup_${new Date()
+          .toISOString()
+          .slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      };
+
+      const importData = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const importedData = JSON.parse(e.target.result);
+            if (
+              Array.isArray(importedData) &&
+              importedData.length > 0 &&
+              "id" in importedData[0] &&
+              "status" in importedData[0]
+            ) {
+              scheduleData = importedData;
+              saveData();
+              renderSchedule();
+              updateProgress();
+            } else {
+              alert("Error: Invalid or empty data file.");
+            }
+          } catch (error) {
+            alert(
+              "Error: Could not parse the file. Please ensure it is a valid JSON backup file."
+            );
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+      };
+
+      const addEventListeners = () => {
+        document.querySelectorAll(".status-select").forEach((select) => {
+          select.addEventListener("change", handleStatusChange);
+        });
+      };
+
+      filterStatus.addEventListener("change", renderSchedule);
+      filterType.addEventListener("change", renderSchedule);
+      exportBtn.addEventListener("click", exportData);
+      importInput.addEventListener("change", importData);
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadData();
+        renderSchedule();
+        updateProgress();
+      });
+    </script>
+  </body>
+</html>
